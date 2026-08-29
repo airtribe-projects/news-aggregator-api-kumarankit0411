@@ -15,6 +15,7 @@ You'll need a News API key from [newsapi.org](https://newsapi.org). Create a `.e
 ```
 PORT=3000
 JWT_SECRET=your-secret
+JWT_EXPIRES_IN=1h
 NEWS_API_KEY=your-key
 ```
 
@@ -66,14 +67,13 @@ app/
   controllers/           # route handlers
   routes/                # express routers
   middleware/            # auth, error handling
-  helpers/               # utilities
 test/
   server.test.js         # all tests
 ```
 
 ## Testing
 
-34 tests covering signup, login, preferences, news fetching, caching, article interactions, search, and auth. Run with:
+36 tests covering signup, login, preferences, news fetching, caching, article interactions, search, and auth. Run with:
 
 ```bash
 npm test
