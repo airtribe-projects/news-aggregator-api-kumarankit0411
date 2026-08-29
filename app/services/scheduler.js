@@ -4,13 +4,13 @@ const { fetchFromNewsAPI, cache } = require('./newsService');
 
 let intervalId = null;
 
-const refreshAllUsers = async () => {
+const refreshAllUsers = () => {
     const users = userModel.findAll();
     console.log(`Refreshing cache for ${users.length} user(s)...`);
 
     for (const user of users) {
         try {
-            const articles = await fetchFromNewsAPI(user.preferences);
+            const articles = fetchFromNewsAPI(user.preferences);
             cache.set(`news:${user.email}`, articles);
             console.log(`Cache refreshed for ${user.email}`);
         } catch (error) {

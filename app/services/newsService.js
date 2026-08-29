@@ -1,62 +1,67 @@
 const axios = require('axios');
 const config = require('../config');
-const { createError, findUserOrThrow } = require('../helpers');
 const { mapArticle } = require('../models/newsModel');
-const CacheService = require('./cacheService');
 
-const cache = new CacheService();
+const cache = {};
 
-const buildQueryParams = (preferences, keyword) => {
-    const params = {};
-    params.q = keyword || preferences.join(' OR ');
-    params.sortBy = 'publishedAt';
-    return params;
+const getCache = (key) => {
+    const entry = cache[key];
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+        delete cache[key];
+        return null;
+    }
+    return entry.value;
+};
+
+const setCache = (key, value) => {
+    cache[key] = {
+        value,
+        expiresAt: Date.now() + config.cacheTtlMs,
+    };
 };
 
 const fetchFromNewsAPI = async (preferences, keyword) => {
-    const params = { apiKey: config.newsApiKey, ...buildQueryParams(preferences, keyword) };
+    const params = {
+        apiKey: config.newsApiKey,
+        q: keyword || preferences.join(' OR '),
+        sortBy: 'publishedAt',
+    };
     const response = await axios.get('https://newsapi.org/v2/everything', { params, timeout: 10000 });
     const articles = response.data?.articles || [];
     return articles.map(mapArticle);
 };
 
 const getNews = async (email) => {
-    const user = findUserOrThrow(email);
-
-    if (!config.newsApiKey) {
-        throw createError('News API key not configured', 502);
+    const userModel = require('../models/userModel');
+    const user = userModel.findByEmail(email);
+    if (!user) {
+        const err = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
     }
 
     const cacheKey = `news:${email}`;
-
     try {
-        const cached = cache.get(cacheKey);
+        const cached = getCache(cacheKey);
         if (cached) return cached;
 
         const articles = await fetchFromNewsAPI(user.preferences);
-        cache.set(cacheKey, articles);
+        setCache(cacheKey, articles);
         return articles;
     } catch (error) {
         console.error('Error fetching news:', error.message);
-        throw createError('Failed to fetch news', 502);
+        throw new Error('Failed to fetch news');
     }
 };
 
 const searchNews = async (keyword) => {
-    if (!keyword || keyword.trim().length === 0) {
-        throw createError('Search keyword is required', 400);
-    }
-
-    if (!config.newsApiKey) {
-        throw createError('News API key not configured', 502);
-    }
-
     try {
         return await fetchFromNewsAPI([], keyword);
     } catch (error) {
         console.error('Error searching news:', error.message);
-        throw createError('Failed to search news', 502);
+        throw new Error('Failed to search news');
     }
 };
 
-module.exports = { getNews, searchNews, fetchFromNewsAPI, cache };
+module.exports = { getNews, searchNews, fetchFromNewsAPI, cache: { get: getCache, set: setCache } };

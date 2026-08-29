@@ -1,5 +1,3 @@
-const { createError } = require('../helpers');
-
 const mapArticle = (item) => {
     const title = item.title || '';
     let hash = 0;
@@ -26,8 +24,18 @@ const getInteractions = (email) => {
     return interactions[email];
 };
 
-const markAsRead = (email, articleId) => {
-    if (!articleId) throw createError('Article ID is required', 400);
+const markAsRead = (email, articleId, cachedArticles) => {
+    if (!articleId) {
+        const err = new Error('Article ID is required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    if (cachedArticles && !cachedArticles.find(a => a.id === articleId)) {
+        const err = new Error('Article not found');
+        err.statusCode = 404;
+        throw err;
+    }
 
     const userInteractions = getInteractions(email);
     const article = { id: articleId, readAt: new Date().toISOString() };
@@ -38,8 +46,18 @@ const markAsRead = (email, articleId) => {
     return userInteractions.read;
 };
 
-const markAsFavorite = (email, articleId) => {
-    if (!articleId) throw createError('Article ID is required', 400);
+const markAsFavorite = (email, articleId, cachedArticles) => {
+    if (!articleId) {
+        const err = new Error('Article ID is required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    if (cachedArticles && !cachedArticles.find(a => a.id === articleId)) {
+        const err = new Error('Article not found');
+        err.statusCode = 404;
+        throw err;
+    }
 
     const userInteractions = getInteractions(email);
     const article = { id: articleId, favoritedAt: new Date().toISOString() };

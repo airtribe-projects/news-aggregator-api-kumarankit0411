@@ -11,10 +11,11 @@ const mockUser = {
 };
 
 let token = '';
+let articleId = '';
 
 tap.test('POST /users/signup', async (t) => { 
     const response = await server.post('/users/signup').send(mockUser);
-    t.equal(response.status, 200);
+    t.equal(response.status, 201);
     t.end();
 });
 
@@ -80,6 +81,7 @@ tap.test('GET /news', async (t) => {
     const response = await server.get('/news').set('Authorization', `Bearer ${token}`);
     t.equal(response.status, 200);
     t.hasOwnProp(response.body, 'news');
+    articleId = response.body.news[0].id;
     t.end();
 });
 
@@ -99,15 +101,21 @@ tap.test('GET /news returns cached result on second call', async (t) => {
 });
 
 tap.test('POST /news/:id/read marks article as read', async (t) => {
-    const response = await server.post('/news/Test-Article/read').set('Authorization', `Bearer ${token}`);
+    const response = await server.post(`/news/${articleId}/read`).set('Authorization', `Bearer ${token}`);
     t.equal(response.status, 200);
     t.hasOwnProp(response.body, 'read');
     t.end();
 });
 
 tap.test('POST /news/:id/read without token', async (t) => {
-    const response = await server.post('/news/Test-Article/read');
+    const response = await server.post(`/news/${articleId}/read`);
     t.equal(response.status, 401);
+    t.end();
+});
+
+tap.test('POST /news/:id/read with invalid id returns 404', async (t) => {
+    const response = await server.post('/news/invalid-id-xyz/read').set('Authorization', `Bearer ${token}`);
+    t.equal(response.status, 404);
     t.end();
 });
 
@@ -120,15 +128,21 @@ tap.test('GET /news/read returns read articles', async (t) => {
 });
 
 tap.test('POST /news/:id/favorite marks article as favorite', async (t) => {
-    const response = await server.post('/news/Test-Article/favorite').set('Authorization', `Bearer ${token}`);
+    const response = await server.post(`/news/${articleId}/favorite`).set('Authorization', `Bearer ${token}`);
     t.equal(response.status, 200);
     t.hasOwnProp(response.body, 'favorites');
     t.end();
 });
 
 tap.test('POST /news/:id/favorite without token', async (t) => {
-    const response = await server.post('/news/Test-Article/favorite');
+    const response = await server.post(`/news/${articleId}/favorite`);
     t.equal(response.status, 401);
+    t.end();
+});
+
+tap.test('POST /news/:id/favorite with invalid id returns 404', async (t) => {
+    const response = await server.post('/news/invalid-id-xyz/favorite').set('Authorization', `Bearer ${token}`);
+    t.equal(response.status, 404);
     t.end();
 });
 
@@ -155,7 +169,7 @@ tap.test('GET /news/search/:keyword without token', async (t) => {
 
 tap.test('Scheduler can start and stop without error', async (t) => {
     const scheduler = require('../app/services/scheduler');
-    scheduler.start();
+    await scheduler.start();
     scheduler.stop();
     t.pass('Scheduler started and stopped without error');
     t.end();
